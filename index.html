@@ -125,6 +125,7 @@ const NUKTA_MAP = {
     'ग': 'ग़', // Ghha
     'ज': 'ज़', // Za
     'फ': 'फ़', // Fa
+    'य' : 'य़',
 };
         const MAATRA_MAP = {'अ':'', 'आ':'ा', 'इ':'ि', 'ई':'ी', 'उ':'ु', 'ऊ':'ू', 'ऋ':'ृ', 'ए':'े', 'ऐ':'ै', 'ओ':'ो', 'औ':'ौ' };
 
@@ -222,23 +223,60 @@ const NUKTA_MAP = {
         }
 
         // --- PREVIEW LOGIC ---
-        function showPreview(el, data) {
-            const rect = el.getBoundingClientRect();
-            // Center the pop-up relative to the key
-            preview.style.left = (rect.left + rect.width / 2) + 'px';
-            preview.style.top = (rect.top) + 'px'; 
-            preview.style.display = 'grid';
+ // --- UPDATED showPreview WITH CLAMPING (Max 3) ---
+function showPreview(el, data) {
+    const rect = el.getBoundingClientRect();
+    preview.style.left = (rect.left + rect.width / 2) + 'px';
+    preview.style.top = (rect.top) + 'px'; 
+    preview.style.display = 'grid';
 
-            // Fill content (This is where the user finally sees the hints)
-            pCells.base.innerText = data.flicks.base;
-            pCells.up.innerText = data.flicks.up || '';
-            pCells.left.innerText = data.flicks.left || '';
-            pCells.right.innerText = data.flicks.right || '';
-            pCells.down.innerText = data.flicks.down || '';
+    // 1. Capture the Context
+    const start = textDisplay.selectionStart;
+    const currentVal = textDisplay.value;
+    const textBeforeCursor = currentVal.slice(0, start);
+    
+    // Regex matches a cluster of ANY length at the end
+    // [Consonant] + ( [Virama] + [Consonant] ) * repeated
+    const clusterRegex = /([क-हक़-य़](?:्[क-हक़-य़])*)$/;
+    const match = textBeforeCursor.match(clusterRegex);
+    
+    let displayContext = '';
 
-            highlightPreview('base');
+    if (match) {
+        const fullCluster = match[0];
+        // Split by Virama to count actual consonants
+        // e.g., "ক"+"্"+"ত"+"্"+"র" -> ["ক", "ত", "র"]
+        const consonants = fullCluster.split('्');
+        
+        if (consonants.length > 3) {
+            // CLAMPING LOGIC: Take only the last 3 consonants
+            // Slice the array to get last 3, then rejoin with Virama
+            displayContext = consonants.slice(-3).join('्');
+        } else {
+            // If 2 or 3, show the whole thing
+            displayContext = fullCluster;
         }
+    }
 
+    // 2. Helper to generate label
+    const getLabel = (char) => {
+        if (!char) return '';
+        // If it's a Maatra, fuse it with the (clamped) context
+        if (displayContext && MAATRA_MAP[char] !== undefined) {
+            return displayContext + MAATRA_MAP[char]; 
+        }
+        return char;
+    };
+
+    // 3. Render
+    pCells.base.innerText  = getLabel(data.flicks.base);
+    pCells.up.innerText    = getLabel(data.flicks.up);
+    pCells.left.innerText  = getLabel(data.flicks.left);
+    pCells.right.innerText = getLabel(data.flicks.right);
+    pCells.down.innerText  = getLabel(data.flicks.down);
+
+    highlightPreview('base');
+}
         function highlightPreview(dir) {
             Object.values(pCells).forEach(c => c.classList.remove('active'));
             if (pCells[dir] && pCells[dir].innerText) pCells[dir].classList.add('active');
@@ -310,7 +348,7 @@ const NUKTA_MAP = {
         function isConsonant(char) {
             if (!char) return false;
             const c = char.charCodeAt(0);
-            return (c >= 0x0995 && c <= 0x09B9) || (c >= 0x09DC && c <= 0x09DF);
+            return (c >= 0x0915 && c <= 0x0939) || (c >= 0x0958 && c <= 0x095F);
         }
 
         render();
