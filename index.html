@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hindi Flick Keyboard - Zen Mode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CORE SETUP */
+        body, html { overscroll-behavior: none; touch-action: none; height: 100%; margin: 0; font-family: 'Inter', sans-serif; }
+        .no-tap { -webkit-tap-highlight-color: transparent; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hindi:wght@400;500;600&display=swap');
+        body { font-family: 'Noto Sans Hindi', sans-serif; }
+        
+        /* 5-COLUMN GRID LAYOUT (Japanese Style) */
+        /* Left Sidebar (0.8fr) | Main (1fr 1fr 1fr) | Right Sidebar (0.8fr) */
+        #keyboard-container {
+            display: grid;
+            grid-template-columns: 0.8fr 1fr 1fr 1fr 0.8fr;
+            grid-template-rows: repeat(4, 1fr);
+            gap: 6px;
+            padding: 8px;
+            height: 100%;
+        }
+
+        /* FLICK PREVIEW (The Cross) */
+        #flick-preview {
+            position: absolute; display: none; 
+            grid-template-areas: ". up ." "left base right" ". down .";
+            grid-template-rows: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
+            width: 180px; height: 180px; pointer-events: none; z-index: 100;
+            margin-left: -60px; /* Offset to center on touch */
+            margin-top: -160px; /* Offset to float above */
+        }
+        .flick-cell { 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 1.8rem; font-weight: bold; 
+            background: rgba(255,255,255, 0.95); 
+            color: #1f2937;
+            border-radius: 8px; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+            border: 1px solid #e5e7eb;
+        }
+        /* Highlight the active selection */
+        .flick-cell.active { 
+            background: #3b82f6; color: white; border-color: #2563eb; 
+            transform: scale(1.1); transition: transform 0.1s;
+        }
+        textarea {
+    font-family: 'Noto Sans Hindi', sans-serif;
+    caret-color: #2563eb; /* Blue cursor */
+}
+        .area-up { grid-area: up; } 
+        .area-left { grid-area: left; } 
+        .area-right { grid-area: right; } 
+        .area-down { grid-area: down; } 
+        .area-base { grid-area: base; background: #f3f4f6; color: #4b5563; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col h-full overflow-hidden">
+
+    <div class="flex-1 p-4 w-full max-w-2xl mx-auto flex flex-col justify-end">
+<textarea
+    id="text-display"
+    class="w-full h-32 bg-white dark:bg-gray-800 rounded-xl p-4 text-4xl shadow-inner border border-gray-200 dark:border-gray-700 resize-none outline-none focus:ring-2 focus:ring-blue-500 font-medium leading-relaxed"
+    placeholder="Type here..."
+    autofocus
+></textarea>
+        <div class="text-center text-gray-400 text-sm mt-4 mb-2">Flick to type • Tap center for base</div>
+    </div>
+
+    <div id="flick-preview">
+        <div class="flick-cell area-up"></div>
+        <div class="flick-cell area-left"></div>
+        <div class="flick-cell area-base"></div>
+        <div class="flick-cell area-right"></div>
+        <div class="flick-cell area-down"></div>
+    </div>
+
+    <div class="bg-gray-200 dark:bg-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] w-full">
+        <div id="keyboard-container" class="w-full max-w-2xl mx-auto h-[320px]">
+            </div>
+    </div>
+
+    <script>
+        // --- CONFIG: The 5-Column Layout ---
+        // Sidebars are integrated directly into the rows for perfect grid alignment.
+        const keyMap = {
+            'row1': [
+                { key: '🢐¦🢒', type: 'func', action: 'ZWNJ' },         // Right Col
+                { key: 'क', type: 'char', flicks: { base: 'क', left: 'ख', up: 'ग', right: 'घ', down: 'ङ' } },
+                { key: 'च', type: 'char', flicks: { base: 'च', left: 'छ', up: 'ज', right: 'झ', down: 'ञ' } },
+                { key: 'ट', type: 'char', flicks: { base: 'ट', left: 'ठ', up: 'ड', right: 'ढ', down: 'ण' } },
+                { key: '⌫', type: 'func', action: 'backspace' }     // Right Col
+            ],
+            'row2': [
+                { key: '🢐', type: 'func', action: 'cursorLeft' },   // Left Col
+                { key: 'अ', type: 'char', flicks: { base: 'अ', left: 'इ', up: 'उ', right: 'ए', down: 'ओ' } },
+                { key: '्', type: 'char', flicks: { base: '्', left: null, up: 'ं', right: 'ः', down: 'ँ' }},
+                { key: 'आ', type: 'char', flicks: { base: 'आ', left: 'ई', up: 'ऊ', right: 'ऐ', down: 'औ' } },
+                { key: '🢒', type: 'func', action: 'cursorRight' },  // Right Col
+            ],
+            'row3': [
+                { key: '123', type: 'func', action: 'num' },        // Left Col
+                { key: 'त', type: 'char', flicks: { base: 'त', left: 'थ', up: 'द', right: 'ध', down: 'न' } },
+                { key: 'प', type: 'char', flicks: { base: 'प', left: 'फ', up: 'ब', right: 'भ', down: 'म' } },
+                { key: 'य', type: 'char', flicks: { base: 'य', left: 'र', up: 'ल', right: 'व', down: 'ऋ' } },
+                { key: ' ', type: 'func', label: '␣', action: 'space' } // Right Col (Space)
+            ],
+            'row4': [
+                { key: 'EN', type: 'func', action: 'lang' },        // Left Col
+                { key: 'क्ष', type: 'char', flicks: { base: 'क्ष', left: 'त्र', up: 'ज्ञ', right: 'र्', down: 'श्र'  } },
+                { key: 'ह', type: 'char', flicks: { base: 'ह', left: 'श', up: 'ष', right: 'स', down: '়' }},
+                { key: '।', type: 'char', flicks: { base: '।', left: '.', up: '?', right: ',', down: '-' }},
+                { key: '⏎', type: 'func', action: 'enter' }         // Right Col
+                
+            ]
+        };
+const NUKTA_MAP = {
+    'ड': 'ड़', // The big one (Dal -> Rra)
+    'ढ': 'ढ़', // The other big one (Ddha -> Rhha)
+    'क': 'क़', // Qa
+    'ख': 'ख़', // Khha
+    'ग': 'ग़', // Ghha
+    'ज': 'ज़', // Za
+    'फ': 'फ़', // Fa
+};
+        const MAATRA_MAP = {'अ':'', 'आ':'ा', 'इ':'ि', 'ई':'ी', 'उ':'ु', 'ऊ':'ू', 'ऋ':'ृ', 'ए':'े', 'ऐ':'ै', 'ओ':'ो', 'औ':'ौ' };
+
+        // --- DOM ELEMENTS ---
+        const container = document.getElementById('keyboard-container');
+        const textDisplay = document.getElementById('text-display');
+        const preview = document.getElementById('flick-preview');
+        const pCells = {
+            base: preview.querySelector('.area-base'),
+            up: preview.querySelector('.area-up'),
+            down: preview.querySelector('.area-down'),
+            left: preview.querySelector('.area-left'),
+            right: preview.querySelector('.area-right'),
+        };
+
+        // --- RENDER ENGINE ---
+        function render() {
+            container.innerHTML = '';
+            const allKeys = [...keyMap.row1, ...keyMap.row2, ...keyMap.row3, ...keyMap.row4];
+
+            allKeys.forEach(data => {
+                const btn = document.createElement('div');
+                
+                // CLEAN STYLING
+                if (data.type === 'func') {
+                    // Sidebar Keys: Gray, smaller font
+                    btn.className = 'no-tap relative rounded-lg flex items-center justify-center select-none bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-lg active:bg-gray-400 transition-colors shadow-sm';
+                } else {
+                    // Main Keys: White, Large Font, CLEAN (No hints)
+                    btn.className = 'no-tap relative rounded-lg flex items-center justify-center select-none bg-white dark:bg-gray-600 text-gray-900 dark:text-white text-3xl font-medium shadow-md active:bg-gray-100 transition-colors';
+                }
+
+                btn.innerText = data.label || data.key;
+                
+                // Attach Physics
+                attachTouch(btn, data);
+                container.appendChild(btn);
+            });
+        }
+
+        // --- PHYSICS ENGINE ---
+        let activeKey = null;
+        let startX, startY;
+        const THRESHOLD = 25;
+
+        function attachTouch(el, data) {
+            el.addEventListener('touchstart', e => {
+                e.preventDefault();
+                activeKey = data;
+                const t = e.touches[0];
+                startX = t.clientX;
+                startY = t.clientY;
+                el.style.transform = "scale(0.95)";
+
+                if (data.type === 'char') {
+                    showPreview(el, data);
+                }
+            }, {passive: false});
+
+            el.addEventListener('touchmove', e => {
+                if (!activeKey || data.type !== 'char') return;
+                e.preventDefault();
+                const t = e.touches[0];
+                const dx = t.clientX - startX;
+                const dy = t.clientY - startY;
+                const dir = getDirection(dx, dy);
+                highlightPreview(dir);
+            }, {passive: false});
+
+            el.addEventListener('touchend', e => {
+                e.preventDefault();
+                el.style.transform = "scale(1)";
+                
+                if (activeKey) {
+                    if (activeKey.type === 'char') {
+                        const t = e.changedTouches[0];
+                        const dir = getDirection(t.clientX - startX, t.clientY - startY);
+                        const char = activeKey.flicks[dir] || activeKey.flicks.base;
+                        handleInput(char);
+                    } else {
+                        // Function key tap
+                        handleInput(null, activeKey.action);
+                    }
+                }
+                
+                hidePreview();
+                activeKey = null;
+            });
+        }
+
+        function getDirection(dx, dy) {
+            if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return 'base';
+            if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+            return dy > 0 ? 'down' : 'up';
+        }
+
+        // --- PREVIEW LOGIC ---
+        function showPreview(el, data) {
+            const rect = el.getBoundingClientRect();
+            // Center the pop-up relative to the key
+            preview.style.left = (rect.left + rect.width / 2) + 'px';
+            preview.style.top = (rect.top) + 'px'; 
+            preview.style.display = 'grid';
+
+            // Fill content (This is where the user finally sees the hints)
+            pCells.base.innerText = data.flicks.base;
+            pCells.up.innerText = data.flicks.up || '';
+            pCells.left.innerText = data.flicks.left || '';
+            pCells.right.innerText = data.flicks.right || '';
+            pCells.down.innerText = data.flicks.down || '';
+
+            highlightPreview('base');
+        }
+
+        function highlightPreview(dir) {
+            Object.values(pCells).forEach(c => c.classList.remove('active'));
+            if (pCells[dir] && pCells[dir].innerText) pCells[dir].classList.add('active');
+        }
+
+        function hidePreview() {
+            preview.style.display = 'none';
+        }
+
+        // --- INPUT LOGIC ---
+ function handleInput(char, action) {
+    const start = textDisplay.selectionStart;
+    const end = textDisplay.selectionEnd;
+    const currentVal = textDisplay.value;
+
+    const insert = (str) => textDisplay.setRangeText(str, start, end, 'end');
+    const move = (offset) => {
+        const newPos = Math.max(0, Math.min(currentVal.length, start + offset));
+        textDisplay.setSelectionRange(newPos, newPos);
+    };
+
+    // --- A. ACTIONS ---
+    if (action) {
+        if (action === 'backspace') {
+            if (start === end && start > 0) textDisplay.setRangeText('', start - 1, start, 'end');
+            else textDisplay.setRangeText('', start, end, 'end');
+        }
+        else if (action === 'space') insert(' ');
+        else if (action === 'enter') insert('\n');
+        else if (action === 'punct') insert('।');
+        else if (action === 'ZWNJ') insert('\u200C');
+        else if (action === 'cursorLeft') move(-1);
+        else if (action === 'cursorRight') move(1);
+
+        textDisplay.focus();
+        return;
+    }
+
+    // --- B. NUKTA LOGIC (The Fix) ---
+    // If the input char is a Nukta (Bengali '়' or Devanagari '़')
+    if (char === '়' || char === '़') {
+        const charBefore = currentVal.slice(start - 1, start);
+
+        // Check if the previous char has a fused form
+        if (NUKTA_MAP[charBefore]) {
+            // Delete the base char and insert the fused char
+            textDisplay.setRangeText(NUKTA_MAP[charBefore], start - 1, end, 'end');
+        } else {
+            // Normal Nukta (for things like 'ka' -> 'qa')
+            insert(char);
+        }
+        textDisplay.focus();
+        return;
+    }
+
+    // --- C. STANDARD INPUT ---
+    if (char) {
+        const charBefore = currentVal.slice(start - 1, start);
+
+        if (MAATRA_MAP[char] !== undefined && isConsonant(charBefore)) {
+            insert(MAATRA_MAP[char]);
+        } else {
+            insert(char);
+        }
+        textDisplay.focus();
+    }
+}
+
+        function isConsonant(char) {
+            if (!char) return false;
+            const c = char.charCodeAt(0);
+            return (c >= 0x0995 && c <= 0x09B9) || (c >= 0x09DC && c <= 0x09DF);
+        }
+
+        render();
+    </script>
+</body>
+</html>
