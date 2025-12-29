@@ -97,7 +97,7 @@
             'row2': [
                 { key: '🢐', type: 'func', action: 'cursorLeft' },   // Left Col
                 { key: 'अ', type: 'char', flicks: { base: 'अ', left: 'इ', up: 'उ', right: 'ए', down: 'ओ' } },
-                { key: '्', type: 'char', flicks: { base: '्', left: null, up: 'ं', right: 'ः', down: 'ँ' }},
+                { key: '्', type: 'char', flicks: { base: '्', left: 'ऑ', up: 'अं', right: 'अः', down: 'अँ' } },
                 { key: 'आ', type: 'char', flicks: { base: 'आ', left: 'ई', up: 'ऊ', right: 'ऐ', down: 'औ' } },
                 { key: '🢒', type: 'func', action: 'cursorRight' },  // Right Col
             ],
@@ -111,8 +111,8 @@
             'row4': [
                 { key: 'EN', type: 'func', action: 'lang' },        // Left Col
                 { key: 'क्ष', type: 'char', flicks: { base: 'क्ष', left: 'त्र', up: 'ज्ञ', right: 'र्', down: 'श्र'  } },
-                { key: 'ह', type: 'char', flicks: { base: 'ह', left: 'श', up: 'ष', right: 'स', down: '়' }},
-                { key: '।', type: 'char', flicks: { base: '।', left: '.', up: '?', right: ',', down: '-' }},
+                { key: 'ह', type: 'char', flicks: { base: 'ह', left: 'श', up: 'ष', right: 'स', down: '़' } },
+                { key: '।', type: 'char', flicks: { base: '।', left: '.', up: '?', right: ',', down: '-' } },
                 { key: '⏎', type: 'func', action: 'enter' }         // Right Col
                 
             ]
@@ -125,9 +125,9 @@ const NUKTA_MAP = {
     'ग': 'ग़', // Ghha
     'ज': 'ज़', // Za
     'फ': 'फ़', // Fa
-    'य' : 'य़',
+    'य' : 'य़', // Bengali Ya
 };
-        const MAATRA_MAP = {'अ':'', 'आ':'ा', 'इ':'ि', 'ई':'ी', 'उ':'ु', 'ऊ':'ू', 'ऋ':'ृ', 'ए':'े', 'ऐ':'ै', 'ओ':'ो', 'औ':'ौ' };
+        const MAATRA_MAP = {'अ':'', 'आ':'ा', 'इ':'ि', 'ई':'ी', 'उ':'ु', 'ऊ':'ू', 'ऋ':'ृ', 'ए':'े', 'ऐ':'ै', 'ओ':'ो', 'औ':'ौ', 'अं':'ं', 'अः':'ः', 'ऑ':'ॉ', 'अँ':'ँ'};
 
         // --- DOM ELEMENTS ---
         const container = document.getElementById('keyboard-container');
@@ -316,8 +316,8 @@ function showPreview(el, data) {
     }
 
     // --- B. NUKTA LOGIC (The Fix) ---
-    // If the input char is a Nukta (Bengali '়' or Devanagari '़')
-    if (char === '়' || char === '़') {
+    // If the input char is a Nukta (Devanagari '़')
+    if (char === '़') {
         const charBefore = currentVal.slice(start - 1, start);
 
         // Check if the previous char has a fused form
