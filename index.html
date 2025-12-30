@@ -141,6 +141,16 @@ const NUKTA_MAP = {
             right: preview.querySelector('.area-right'),
         };
 
+// 1. When touching YOUR keys, hide system keyboard
+container.addEventListener('touchstart', () => {
+    textDisplay.inputMode = 'none';
+}, {capture: true}); // Capture phase ensures it runs before focus
+
+// 2. When touching the TEXTBOX, allow system keyboard
+textDisplay.addEventListener('touchstart', () => {
+    textDisplay.inputMode = 'text'; // Or 'decimal', 'email' etc.
+});
+
         // --- RENDER ENGINE ---
         function render() {
             container.innerHTML = '';
